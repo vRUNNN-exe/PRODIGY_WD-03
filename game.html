@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic-Tac-Toe Beige Elegance</title>
+    <style>
+        body {
+            background: linear-gradient(120deg, #f5ecd7 0%, #e7d8c9 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+        }
+        h1 {
+            color: #7c5e3c;
+            text-shadow: 0 2px 8px #f5ecd7, 0 0 2px #e7d8c9;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 90px);
+            grid-template-rows: repeat(3, 90px);
+            gap: 12px;
+            background: #f8f3ea;
+            border-radius: 18px;
+            box-shadow: 0 4px 24px 0 rgba(124, 94, 60, 0.07);
+            padding: 18px;
+        }
+        .cell {
+            width: 90px;
+            height: 90px;
+            background: #f5ecd7;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2rem;
+            color: #7c5e3c;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(124,94,60,0.04);
+            transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+            user-select: none;
+            position: relative;
+            border: 2px solid #e7d8c9;
+        }
+        .cell.x {
+            color: #a47149;
+            text-shadow: 0 0 6px #e7d8c9;
+            animation: popX 0.3s;
+        }
+        .cell.o {
+            color: #c97b63;
+            text-shadow: 0 0 6px #f5ecd7;
+            animation: popO 0.3s;
+        }
+        .cell.winner {
+            animation: winnerPulse 1s infinite alternate;
+            box-shadow: 0 0 16px 4px #e7d8c9, 0 0 0 2px #a4714933;
+            z-index: 2;
+        }
+        @keyframes popX {
+            0% { transform: scale(0.7); }
+            100% { transform: scale(1); }
+        }
+        @keyframes popO {
+            0% { transform: scale(0.7); }
+            100% { transform: scale(1); }
+        }
+        @keyframes winnerPulse {
+            0% { box-shadow: 0 0 16px 4px #e7d8c9, 0 0 0 2px #a4714933; }
+            100% { box-shadow: 0 0 24px 8px #f5ecd7, 0 0 0 4px #c97b6322; }
+        }
+        .status {
+            color: #7c5e3c;
+            margin: 20px 0 10px 0;
+            font-size: 1.1rem;
+            text-shadow: 0 0 4px #f5ecd7;
+        }
+        .reset-btn {
+            background: linear-gradient(90deg, #e7d8c9 0%, #f5ecd7 100%);
+            color: #7c5e3c;
+            border: none;
+            border-radius: 18px;
+            padding: 9px 26px;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 1px 6px #e7d8c9;
+            margin-top: 10px;
+            transition: background 0.2s, box-shadow 0.2s;
+        }
+        .reset-btn:hover {
+            background: linear-gradient(90deg, #f5ecd7 0%, #e7d8c9 100%);
+            box-shadow: 0 2px 12px #e7d8c9;
+        }
+        .confetti {
+            pointer-events: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            z-index: 100;
+        }
+        @media (max-width: 500px) {
+            .board {
+                grid-template-columns: repeat(3, 54px);
+                grid-template-rows: repeat(3, 54px);
+                padding: 7px;
+            }
+            .cell {
+                width: 54px;
+                height: 54px;
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Tic-Tac-Toe</h1>
+    <div class="status" id="status">Player X's turn</div>
+    <div class="board" id="board">
+        <div class="cell" data-index="0"></div>
+        <div class="cell" data-index="1"></div>
+        <div class="cell" data-index="2"></div>
+        <div class="cell" data-index="3"></div>
+        <div class="cell" data-index="4"></div>
+        <div class="cell" data-index="5"></div>
+        <div class="cell" data-index="6"></div>
+        <div class="cell" data-index="7"></div>
+        <div class="cell" data-index="8"></div>
+    </div>
+    <button class="reset-btn" onclick="resetGame()">Reset Game</button>
+    <canvas class="confetti" id="confetti"></canvas>
+    <script>
+        const board = document.getElementById('board');
+        const statusDiv = document.getElementById('status');
+        let cells = Array.from(document.getElementsByClassName('cell'));
+        let currentPlayer = 'X';
+        let gameActive = true;
+        let gameState = Array(9).fill('');
+        let winCells = [];
+        const confettiCanvas = document.getElementById('confetti');
+        let confettiActive = false;
+
+        const winPatterns = [
+            [0,1,2],[3,4,5],[6,7,8], // rows
+            [0,3,6],[1,4,7],[2,5,8], // cols
+            [0,4,8],[2,4,6]          // diags
+        ];
+
+        function handleCellClick(e) {
+            const idx = parseInt(e.target.getAttribute('data-index'));
+            if (!gameActive || gameState[idx]) return;
+            gameState[idx] = currentPlayer;
+            e.target.textContent = currentPlayer;
+            e.target.classList.add(currentPlayer.toLowerCase());
+            const win = checkWin();
+            if (win) {
+                winCells = win;
+                win.forEach(i => cells[i].classList.add('winner'));
+                statusDiv.textContent = `Player ${currentPlayer} wins! 🎉`;
+                statusDiv.style.textShadow = currentPlayer === 'X' ? '0 0 12px #e0e7ff' : '0 0 12px #b2f5ea';
+                gameActive = false;
+                launchConfetti();
+                return;
+            }
+            if (!gameState.includes('')) {
+                statusDiv.textContent = "It's a draw!";
+                statusDiv.style.textShadow = '0 0 12px #f6f7fb';
+                gameActive = false;
+                return;
+            }
+            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+            statusDiv.textContent = `Player ${currentPlayer}'s turn`;
+            statusDiv.style.textShadow = currentPlayer === 'X' ? '0 0 8px #e0e7ff' : '0 0 8px #b2f5ea';
+        }
+
+        function checkWin() {
+            for (let pattern of winPatterns) {
+                const [a, b, c] = pattern;
+                if (gameState[a] && gameState[a] === gameState[b] && gameState[a] === gameState[c]) {
+                    return pattern;
+                }
+            }
+            return null;
+        }
+
+        function resetGame() {
+            gameState = Array(9).fill('');
+            cells.forEach(cell => {
+                cell.textContent = '';
+                cell.classList.remove('x', 'o', 'winner');
+            });
+            currentPlayer = 'X';
+            gameActive = true;
+            winCells = [];
+            statusDiv.textContent = `Player X's turn`;
+            statusDiv.style.textShadow = '0 0 8px #e0e7ff';
+            stopConfetti();
+        }
+
+        cells.forEach(cell => cell.addEventListener('click', handleCellClick));
+
+        // Confetti animation
+        function launchConfetti() {
+            confettiActive = true;
+            confettiCanvas.width = window.innerWidth;
+            confettiCanvas.height = window.innerHeight;
+            let ctx = confettiCanvas.getContext('2d');
+            let confettiPieces = [];
+            let colors = ['#ffb6c1', '#43cea2', '#fff', '#6a4cff', '#f8ffae'];
+            for (let i = 0; i < 120; i++) {
+                confettiPieces.push({
+                    x: Math.random() * confettiCanvas.width,
+                    y: Math.random() * -confettiCanvas.height,
+                    r: 6 + Math.random() * 8,
+                    d: Math.random() * 120,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    tilt: Math.random() * 10 - 5,
+                    tiltAngle: 0,
+                    tiltAngleIncremental: (Math.random() * 0.07) + 0.05
+                });
+            }
+            function draw() {
+                ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+                for (let i = 0; i < confettiPieces.length; i++) {
+                    let p = confettiPieces[i];
+                    ctx.beginPath();
+                    ctx.lineWidth = p.r;
+                    ctx.strokeStyle = p.color;
+                    ctx.moveTo(p.x + p.tilt + p.r/3, p.y);
+                    ctx.lineTo(p.x + p.tilt, p.y + p.r);
+                    ctx.stroke();
+                }
+                update();
+            }
+            function update() {
+                for (let i = 0; i < confettiPieces.length; i++) {
+                    let p = confettiPieces[i];
+                    p.y += (Math.cos(p.d) + 3 + p.r/2) / 2;
+                    p.x += Math.sin(0.01 * p.d);
+                    p.tiltAngle += p.tiltAngleIncremental;
+                    p.tilt = Math.sin(p.tiltAngle) * 15;
+                    if (p.y > confettiCanvas.height) {
+                        p.x = Math.random() * confettiCanvas.width;
+                        p.y = -10;
+                    }
+                }
+            }
+            function animate() {
+                if (!confettiActive) return ctx.clearRect(0,0,confettiCanvas.width,confettiCanvas.height);
+                draw();
+                requestAnimationFrame(animate);
+            }
+            animate();
+        }
+        function stopConfetti() {
+            confettiActive = false;
+            if (confettiCanvas) {
+                let ctx = confettiCanvas.getContext('2d');
+                ctx.clearRect(0,0,confettiCanvas.width,confettiCanvas.height);
+            }
+        }
+        window.addEventListener('resize', () => {
+            if (confettiActive) {
+                confettiCanvas.width = window.innerWidth;
+                confettiCanvas.height = window.innerHeight;
+            }
+        });
+    </script>
+</body>
+</html>
